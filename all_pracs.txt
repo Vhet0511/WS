@@ -1,0 +1,868 @@
+==========================================================================
+  JAVA PRACTICALS - ALL IN ONE FILE (complete code, copy-paste ready)
+==========================================================================
+
+CONTENTS
+  PART 1  TCP / UDP Sockets   (TCPClient, TCPServer, TCPChat, UDP)
+  PART 2  RMI                 (Calculator, Server, Client)
+  PART 3  SOAP Web Service    (Temperature)
+  PART 4  REST API            (Student - Spring Boot)
+  PART 5  UDDI-style Service  (Travel)
+  PART 6  XML + JSON          (data files + 10 programs)
+
+HOW TO USE
+  - Each "FILE:" heading = one .java file. Copy everything under it
+    until the next "FILE:" line.
+  - Files with a "package" line must be inside that package/folder.
+  - Always start the SERVER first, then the CLIENT.
+
+
+==========================================================================
+  PART 1 : TCP / UDP SOCKETS   (no package, no external JAR)
+==========================================================================
+  Ports:  TCPServer/TCPClient = 5000
+          UDPServer/UDPClient = 5001
+          TCPChatServer/TCPChatClient = 5002
+  Type "bye" to end the chat.
+
+
+--------------------------------------------------------------------------
+FILE: TCPServer.java
+--------------------------------------------------------------------------
+import java.net.*;
+import java.io.*;
+
+public class TCPServer {
+    public static void main(String[] args) throws Exception {
+        ServerSocket server = new ServerSocket(5000);
+        System.out.println("Server waiting...");
+        Socket socket = server.accept();
+
+        BufferedReader in = new BufferedReader(
+                new InputStreamReader(socket.getInputStream()));
+        PrintWriter out = new PrintWriter(
+                socket.getOutputStream(), true);
+
+        String msg = in.readLine();
+        System.out.println("Client: " + msg);
+        out.println("Hello from Server");
+
+        socket.close();
+        server.close();
+    }
+}
+
+
+--------------------------------------------------------------------------
+FILE: TCPClient.java
+--------------------------------------------------------------------------
+import java.net.*;
+import java.io.*;
+
+public class TCPClient {
+    public static void main(String[] args) throws Exception {
+        Socket socket = new Socket("localhost", 5000);
+
+        BufferedReader in = new BufferedReader(
+                new InputStreamReader(socket.getInputStream()));
+        PrintWriter out = new PrintWriter(
+                socket.getOutputStream(), true);
+
+        out.println("Hello from Client");
+        System.out.println("Server: " + in.readLine());
+
+        socket.close();
+    }
+}
+
+
+--------------------------------------------------------------------------
+FILE: TCPChatServer.java
+--------------------------------------------------------------------------
+import java.net.*;
+import java.io.*;
+
+public class TCPChatServer {
+    public static void main(String[] args) throws Exception {
+        ServerSocket server = new ServerSocket(5002);
+        System.out.println("Waiting for client...");
+        Socket socket = server.accept();
+
+        BufferedReader in = new BufferedReader(
+                new InputStreamReader(socket.getInputStream()));
+        PrintWriter out = new PrintWriter(
+                socket.getOutputStream(), true);
+        BufferedReader keyboard = new BufferedReader(
+                new InputStreamReader(System.in));
+
+        // Receive messages
+        new Thread(() -> {
+            try {
+                String msg;
+                while ((msg = in.readLine()) != null) {
+                    System.out.println("\nClient: " + msg);
+                    if (msg.equalsIgnoreCase("bye"))
+                        break;
+                    System.out.print("You: ");
+                }
+            } catch (Exception e) {
+                System.out.println("Client disconnected");
+            }
+        }).start();
+
+        // Send messages
+        String msg;
+        System.out.print("You: ");
+        while ((msg = keyboard.readLine()) != null) {
+            out.println(msg);
+            if (msg.equalsIgnoreCase("bye"))
+                break;
+            System.out.print("You: ");
+        }
+
+        socket.close();
+        server.close();
+    }
+}
+
+
+--------------------------------------------------------------------------
+FILE: TCPChatClient.java
+--------------------------------------------------------------------------
+import java.net.*;
+import java.io.*;
+
+public class TCPChatClient {
+    public static void main(String[] args) throws Exception {
+        Socket socket = new Socket("localhost", 5002);
+        System.out.println("Connected to server!");
+
+        BufferedReader in = new BufferedReader(
+                new InputStreamReader(socket.getInputStream()));
+        PrintWriter out = new PrintWriter(
+                socket.getOutputStream(), true);
+        BufferedReader keyboard = new BufferedReader(
+                new InputStreamReader(System.in));
+
+        // Receive messages
+        new Thread(() -> {
+            try {
+                String msg;
+                while ((msg = in.readLine()) != null) {
+                    System.out.println("\nServer: " + msg);
+                    if (msg.equalsIgnoreCase("bye"))
+                        break;
+                    System.out.print("You: ");
+                }
+            } catch (Exception e) {
+                System.out.println("Server disconnected");
+            }
+        }).start();
+
+        // Send messages
+        String msg;
+        System.out.print("You: ");
+        while ((msg = keyboard.readLine()) != null) {
+            out.println(msg);
+            if (msg.equalsIgnoreCase("bye"))
+                break;
+            System.out.print("You: ");
+        }
+
+        socket.close();
+    }
+}
+
+
+--------------------------------------------------------------------------
+FILE: UDPServer.java
+--------------------------------------------------------------------------
+import java.net.*;
+
+public class UDPServer {
+    public static void main(String[] args) throws Exception {
+        DatagramSocket socket = new DatagramSocket(5001);
+        byte[] buffer = new byte[1024];
+        System.out.println("UDP Server waiting...");
+
+        DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+        socket.receive(packet);
+
+        String msg = new String(packet.getData(), 0, packet.getLength());
+        System.out.println("Client: " + msg);
+
+        String reply = "Hello from UDP Server";
+        byte[] data = reply.getBytes();
+        DatagramPacket response = new DatagramPacket(
+                data, data.length,
+                packet.getAddress(), packet.getPort());
+        socket.send(response);
+
+        socket.close();
+    }
+}
+
+
+--------------------------------------------------------------------------
+FILE: UDPClient.java
+--------------------------------------------------------------------------
+import java.net.*;
+
+public class UDPClient {
+    public static void main(String[] args) throws Exception {
+        DatagramSocket socket = new DatagramSocket();
+        InetAddress address = InetAddress.getByName("localhost");
+
+        String msg = "Hello from UDP Client";
+        byte[] data = msg.getBytes();
+        DatagramPacket packet = new DatagramPacket(
+                data, data.length, address, 5001);
+        socket.send(packet);
+
+        byte[] buffer = new byte[1024];
+        DatagramPacket response = new DatagramPacket(buffer, buffer.length);
+        socket.receive(response);
+
+        System.out.println("Server: " +
+                new String(response.getData(), 0, response.getLength()));
+
+        socket.close();
+    }
+}
+
+
+==========================================================================
+  PART 2 : RMI   (package com.example.rmi, no external JAR)
+==========================================================================
+  Run order: Server first, then Client. Registry port = 1099.
+
+
+--------------------------------------------------------------------------
+FILE: com/example/rmi/Calculator.java
+--------------------------------------------------------------------------
+package com.example.rmi;
+
+import java.rmi.Remote;
+import java.rmi.RemoteException;
+
+public interface Calculator extends Remote {
+    int add(int a, int b) throws RemoteException;
+}
+
+
+--------------------------------------------------------------------------
+FILE: com/example/rmi/Server.java
+--------------------------------------------------------------------------
+package com.example.rmi;
+
+import java.rmi.server.UnicastRemoteObject;
+import java.rmi.registry.LocateRegistry;
+
+public class Server extends UnicastRemoteObject implements Calculator {
+
+    public Server() throws Exception {
+        super();
+    }
+
+    public int add(int a, int b) {
+        return a + b;
+    }
+
+    public static void main(String[] args) throws Exception {
+        LocateRegistry.createRegistry(1099);
+        Server obj = new Server();
+        java.rmi.Naming.rebind("Calculator", obj);
+        System.out.println("RMI Server Started!");
+    }
+}
+
+
+--------------------------------------------------------------------------
+FILE: com/example/rmi/Client.java
+--------------------------------------------------------------------------
+package com.example.rmi;
+
+public class Client {
+    public static void main(String[] args) throws Exception {
+        Calculator obj = (Calculator)
+                java.rmi.Naming.lookup("rmi://localhost/Calculator");
+        System.out.println("Addition: " + obj.add(400, 10));
+    }
+}
+
+
+==========================================================================
+  PART 3 : SOAP WEB SERVICE   (package com.example.soap)
+==========================================================================
+  Needs Jakarta XML Web Services (jakarta.xml.ws) libraries, e.g. Maven:
+     jakarta.xml.ws:jakarta.xml.ws-api
+     com.sun.xml.ws:jaxws-rt
+  Run Server first. WSDL: http://localhost:8080/temp?wsdl
+
+  NOTE: Server publishes at  /temp . Client below uses the matching
+  address  http://localhost:8080/temp?wsdl  (the original file had a
+  different URL, which would not match the Server - fixed here).
+
+
+--------------------------------------------------------------------------
+FILE: com/example/soap/Temperature.java
+--------------------------------------------------------------------------
+package com.example.soap;
+
+import jakarta.jws.WebMethod;
+import jakarta.jws.WebService;
+
+@WebService
+public interface Temperature {
+
+    @WebMethod
+    double celsiusToFahrenheit(double c);
+
+    @WebMethod
+    double fahrenheitToCelsius(double f);
+}
+
+
+--------------------------------------------------------------------------
+FILE: com/example/soap/TemperatureImpl.java
+--------------------------------------------------------------------------
+package com.example.soap;
+
+import jakarta.jws.WebService;
+
+@WebService(endpointInterface = "com.example.soap.Temperature")
+public class TemperatureImpl implements Temperature {
+
+    public double celsiusToFahrenheit(double c) {
+        return (c * 9 / 5) + 32;
+    }
+
+    public double fahrenheitToCelsius(double f) {
+        return (f - 32) * 5 / 9;
+    }
+}
+
+
+--------------------------------------------------------------------------
+FILE: com/example/soap/Server.java
+--------------------------------------------------------------------------
+package com.example.soap;
+
+import jakarta.xml.ws.Endpoint;
+
+public class Server {
+    public static void main(String[] args) {
+        Endpoint.publish(
+                "http://localhost:8080/temp",
+                new TemperatureImpl()
+        );
+        System.out.println("SOAP Server Started!");
+    }
+}
+
+
+--------------------------------------------------------------------------
+FILE: com/example/soap/Client.java
+--------------------------------------------------------------------------
+package com.example.soap;
+
+import jakarta.xml.ws.Service;
+import javax.xml.namespace.QName;
+import java.net.URL;
+
+public class Client {
+    public static void main(String[] args) throws Exception {
+        URL url = new URL("http://localhost:8080/temp?wsdl");
+
+        QName qname = new QName(
+                "http://soap.example.com/",
+                "TemperatureImplService"
+        );
+
+        Service service = Service.create(url, qname);
+        Temperature obj = service.getPort(Temperature.class);
+
+        System.out.println("C to F: " + obj.celsiusToFahrenheit(100));
+        System.out.println("F to C: " + obj.fahrenheitToCelsius(212));
+    }
+}
+
+
+==========================================================================
+  PART 4 : REST API - STUDENT   (Spring Boot, package com.example.student)
+==========================================================================
+  Create a Spring Boot project with the "Spring Web" dependency.
+  Run StudentApplication. Base URL: http://localhost:8080/students
+
+  Test (Postman / curl):
+    GET    /students          -> all students
+    GET    /students/1        -> one student
+    POST   /students          -> body: {"id":3,"name":"Amit","course":"BBA","age":20}
+    PUT    /students/1        -> body: {"id":1,"name":"Het","course":"MCA","age":23}
+    DELETE /students/2        -> delete
+
+
+--------------------------------------------------------------------------
+FILE: com/example/student/Student.java
+--------------------------------------------------------------------------
+package com.example.student;
+
+public class Student {
+    private int id;
+    private String name;
+    private String course;
+    private int age;
+
+    public Student() {}
+
+    public Student(int id, String name, String course, int age) {
+        this.id = id;
+        this.name = name;
+        this.course = course;
+        this.age = age;
+    }
+
+    public int getId() { return id; }
+    public void setId(int id) { this.id = id; }
+
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+
+    public String getCourse() { return course; }
+    public void setCourse(String course) { this.course = course; }
+
+    public int getAge() { return age; }
+    public void setAge(int age) { this.age = age; }
+}
+
+
+--------------------------------------------------------------------------
+FILE: com/example/student/StudentApplication.java
+--------------------------------------------------------------------------
+package com.example.student;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class StudentApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(StudentApplication.class, args);
+        System.out.println("Student API Started!");
+    }
+}
+
+
+--------------------------------------------------------------------------
+FILE: com/example/student/StudentController.java
+--------------------------------------------------------------------------
+package com.example.student;
+
+import org.springframework.web.bind.annotation.*;
+import java.util.*;
+
+@RestController
+@RequestMapping("/students")
+public class StudentController {
+
+    Map<Integer, Student> students = new HashMap<>();
+
+    public StudentController() {
+        students.put(1, new Student(1, "Het", "MSc IT", 22));
+        students.put(2, new Student(2, "Rahul", "BCA", 21));
+    }
+
+    // GET ALL
+    @GetMapping
+    public Collection<Student> getAll() {
+        return students.values();
+    }
+
+    // GET BY ID
+    @GetMapping("/{id}")
+    public Student getById(@PathVariable int id) {
+        return students.get(id);
+    }
+
+    // CREATE
+    @PostMapping
+    public String addStudent(@RequestBody Student s) {
+        students.put(s.getId(), s);
+        return "Student Added Successfully!";
+    }
+
+    // UPDATE
+    @PutMapping("/{id}")
+    public String updateStudent(@PathVariable int id,
+                                @RequestBody Student s) {
+        if (!students.containsKey(id))
+            return "Student Not Found!";
+        s.setId(id);
+        students.put(id, s);
+        return "Student Updated Successfully!";
+    }
+
+    // DELETE
+    @DeleteMapping("/{id}")
+    public String deleteStudent(@PathVariable int id) {
+        if (students.remove(id) != null)
+            return "Student Deleted Successfully!";
+        return "Student Not Found!";
+    }
+}
+
+
+==========================================================================
+  PART 5 : UDDI-STYLE SERVICE - TRAVEL   (package com.example.uddi)
+==========================================================================
+  NOTE: In your original notes, "Publisher.java" was a copy of the
+  StudentController code by mistake. Below is a proper, working
+  Publisher that publishes the Travel service.
+  Uses the same Jakarta XML Web Services libraries as PART 3.
+  WSDL: http://localhost:8081/travel?wsdl
+
+
+--------------------------------------------------------------------------
+FILE: com/example/uddi/Travel.java
+--------------------------------------------------------------------------
+package com.example.uddi;
+
+import jakarta.jws.WebService;
+import jakarta.jws.WebMethod;
+
+@WebService
+public class Travel {
+
+    @WebMethod
+    public String bookTravel(String destination) {
+        return "Travel booked to " + destination +
+                ". Have a safe journey!";
+    }
+}
+
+
+--------------------------------------------------------------------------
+FILE: com/example/uddi/Publisher.java
+--------------------------------------------------------------------------
+package com.example.uddi;
+
+import jakarta.xml.ws.Endpoint;
+
+public class Publisher {
+    public static void main(String[] args) {
+        Endpoint.publish("http://localhost:8081/travel", new Travel());
+        System.out.println("Travel Service Published!");
+        System.out.println("WSDL: http://localhost:8081/travel?wsdl");
+    }
+}
+
+
+==========================================================================
+  PART 6 : XML + JSON PRACTICALS
+==========================================================================
+  Folder: XML_JSON_Practical   (no package line; keep all files together)
+
+    data.json, data.xml            <- create first (below)
+    json-20240303.jar              <- ONLY external JAR needed (org.json)
+    Download: https://mvnrepository.com/artifact/org.json/json/20240303
+
+  JSON programs need the JAR.  XML / DOM programs use built-in Java.
+
+  Compile & run from the command line:
+    javac -cp json-20240303.jar *.java
+    java  -cp ".;json-20240303.jar" ReadJSON        (Windows)
+    java  -cp ".:json-20240303.jar" ReadJSON        (Linux / Mac)
+
+  Eclipse: Project > Build Path > Configure Build Path > Libraries >
+           Add External JARs > select json-20240303.jar
+
+  TIP: UpdateJSON and DeleteJSON CHANGE data.json. If you re-run
+  ReadJSON / SearchJSON afterwards, reset data.json to the original.
+  CreateXML uses a text block (needs Java 15 or newer).
+
+
+--------------------------------------------------------------------------
+FILE: data.json
+--------------------------------------------------------------------------
+{
+    "id": 101,
+    "name": "Het",
+    "city": "Ahmedabad",
+    "course": "MSc IT"
+}
+
+
+--------------------------------------------------------------------------
+FILE: data.xml
+--------------------------------------------------------------------------
+<?xml version="1.0"?>
+<student>
+    <id>101</id>
+    <name>Het</name>
+    <city>Ahmedabad</city>
+    <course>MSc IT</course>
+</student>
+
+
+--------------------------------------------------------------------------
+FILE: ReadJSON.java            (Read JSON)
+--------------------------------------------------------------------------
+import java.nio.file.Files;
+import java.nio.file.Path;
+import org.json.JSONObject;
+
+public class ReadJSON {
+    public static void main(String[] args) throws Exception {
+        String data = Files.readString(Path.of("data.json"));
+        JSONObject obj = new JSONObject(data);
+
+        System.out.println("ID: " + obj.getInt("id"));
+        System.out.println("Name: " + obj.getString("name"));
+        System.out.println("City: " + obj.getString("city"));
+        System.out.println("Course: " + obj.getString("course"));
+    }
+}
+/* Output:
+ID: 101
+Name: Het
+City: Ahmedabad
+Course: MSc IT
+*/
+
+
+--------------------------------------------------------------------------
+FILE: ReadXML.java             (Read XML using DOM)
+--------------------------------------------------------------------------
+import javax.xml.parsers.*;
+import org.w3c.dom.*;
+import java.io.File;
+
+public class ReadXML {
+    public static void main(String[] args) throws Exception {
+        DocumentBuilder builder =
+                DocumentBuilderFactory.newInstance().newDocumentBuilder();
+        Document doc = builder.parse(new File("data.xml"));
+
+        System.out.println(doc.getDocumentElement().getTextContent());
+    }
+}
+/* Output: (all values of the student element)
+101
+Het
+Ahmedabad
+MSc IT
+*/
+
+
+--------------------------------------------------------------------------
+FILE: XMLtoJSON.java           (XML -> JSON)
+--------------------------------------------------------------------------
+import java.nio.file.Files;
+import java.nio.file.Path;
+import org.json.JSONObject;
+import org.json.XML;
+
+public class XMLtoJSON {
+    public static void main(String[] args) throws Exception {
+        String xml = Files.readString(Path.of("data.xml"));
+        JSONObject json = XML.toJSONObject(xml);
+
+        System.out.println(json.toString(4));
+    }
+}
+/* Output:
+{"student": {
+    "city": "Ahmedabad",
+    "name": "Het",
+    "id": 101,
+    "course": "MSc IT"
+}}
+(key order may vary)
+*/
+
+
+--------------------------------------------------------------------------
+FILE: DOMParsing.java          (Extract specific XML elements)
+--------------------------------------------------------------------------
+import javax.xml.parsers.*;
+import org.w3c.dom.*;
+import java.io.File;
+
+public class DOMParsing {
+    public static void main(String[] args) throws Exception {
+        DocumentBuilder builder =
+                DocumentBuilderFactory.newInstance().newDocumentBuilder();
+        Document doc = builder.parse(new File("data.xml"));
+
+        NodeList list = doc.getElementsByTagName("name");
+
+        for (int i = 0; i < list.getLength(); i++) {
+            System.out.println("Name: " + list.item(i).getTextContent());
+        }
+    }
+}
+/* Output:
+Name: Het
+*/
+
+
+--------------------------------------------------------------------------
+FILE: JSONtoXML.java           (JSON -> XML)
+--------------------------------------------------------------------------
+import java.nio.file.Files;
+import java.nio.file.Path;
+import org.json.JSONObject;
+import org.json.XML;
+
+public class JSONtoXML {
+    public static void main(String[] args) throws Exception {
+        String data = Files.readString(Path.of("data.json"));
+        JSONObject json = new JSONObject(data);
+
+        String xml = XML.toString(json, "student");
+        System.out.println(xml);
+    }
+}
+/* Output: (formatting / order may vary)
+<student><id>101</id><name>Het</name><city>Ahmedabad</city><course>MSc IT</course></student>
+*/
+
+
+--------------------------------------------------------------------------
+FILE: CreateJSON.java          (Create a new JSON file -> newdata.json)
+--------------------------------------------------------------------------
+import java.nio.file.Files;
+import java.nio.file.Path;
+import org.json.JSONObject;
+
+public class CreateJSON {
+    public static void main(String[] args) throws Exception {
+        JSONObject obj = new JSONObject();
+        obj.put("id", 102);
+        obj.put("name", "Rahul");
+        obj.put("city", "Surat");
+        obj.put("course", "BCA");
+
+        Files.writeString(Path.of("newdata.json"), obj.toString(4));
+        System.out.println("JSON File Created!");
+    }
+}
+
+
+--------------------------------------------------------------------------
+FILE: UpdateJSON.java          (Update city in data.json)
+--------------------------------------------------------------------------
+import java.nio.file.*;
+import org.json.JSONObject;
+
+public class UpdateJSON {
+    public static void main(String[] args) throws Exception {
+        String data = Files.readString(Path.of("data.json"));
+        JSONObject obj = new JSONObject(data);
+
+        obj.put("city", "Mumbai");
+
+        Files.writeString(Path.of("data.json"), obj.toString(4));
+        System.out.println("Data Updated!");
+    }
+}
+
+
+--------------------------------------------------------------------------
+FILE: DeleteJSON.java          (Delete "course" field from data.json)
+--------------------------------------------------------------------------
+import java.nio.file.*;
+import org.json.JSONObject;
+
+public class DeleteJSON {
+    public static void main(String[] args) throws Exception {
+        String data = Files.readString(Path.of("data.json"));
+        JSONObject obj = new JSONObject(data);
+
+        obj.remove("course");
+
+        Files.writeString(Path.of("data.json"), obj.toString(4));
+        System.out.println("Course Deleted!");
+    }
+}
+
+
+--------------------------------------------------------------------------
+FILE: SearchJSON.java          (Search student name in data.json)
+--------------------------------------------------------------------------
+import java.nio.file.*;
+import org.json.JSONObject;
+
+public class SearchJSON {
+    public static void main(String[] args) throws Exception {
+        String data = Files.readString(Path.of("data.json"));
+        JSONObject obj = new JSONObject(data);
+
+        if (obj.getString("name").equals("Het")) {
+            System.out.println("Student Found!");
+        } else {
+            System.out.println("Student Not Found!");
+        }
+    }
+}
+
+
+--------------------------------------------------------------------------
+FILE: CreateXML.java           (Create a new XML file -> newdata.xml)
+--------------------------------------------------------------------------
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+public class CreateXML {
+    public static void main(String[] args) throws Exception {
+        String xml = """
+                <?xml version="1.0"?>
+                <student>
+                    <id>103</id>
+                    <name>Rahul</name>
+                    <city>Surat</city>
+                    <course>BCA</course>
+                </student>
+                """;
+
+        Files.writeString(Path.of("newdata.xml"), xml);
+        System.out.println("XML File Created!");
+    }
+}
+
+
+==========================================================================
+  QUICK REVISION
+==========================================================================
+
+  PART 6 programs
+  ---------------------------------------------------------
+  ReadJSON     Read JSON            needs JAR
+  ReadXML      Read XML (DOM)       no JAR
+  XMLtoJSON    XML -> JSON          needs JAR
+  DOMParsing   Extract XML element  no JAR
+  JSONtoXML    JSON -> XML          needs JAR
+  CreateJSON   Create JSON          needs JAR
+  UpdateJSON   Update JSON          needs JAR
+  DeleteJSON   Delete JSON field    needs JAR
+  SearchJSON   Search JSON          needs JAR
+  CreateXML    Create XML           no JAR
+
+  Remember
+  ---------------------------------------------------------
+  JSONObject            -> read / write JSON
+  DocumentBuilder       -> read / parse XML
+  XML.toJSONObject()    -> convert XML into JSON
+  XML.toString()        -> convert JSON into XML
+  NodeList              -> collection of XML nodes
+  JSON = JavaScript Object Notation | XML = Extensible Markup Language
+  DOM  = Document Object Model
+
+  Extra practice ideas
+  ---------------------------------------------------------
+  CountJSON, AddXML, DeleteXML, SearchXML, RenameFile,
+  CopyFile, ReadLine (text file), WriteFile (text file)
+
+==========================================================================
+  END OF FILE
+==========================================================================
